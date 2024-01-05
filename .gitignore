@@ -1,0 +1,4 @@
+# Project exclude paths
+/dbutils/target/
+/mvc/target/
+/mvc-demo/target/

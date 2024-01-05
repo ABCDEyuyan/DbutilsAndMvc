@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+
+    <style>
+      img {
+        width: 20px;
+        height: 20px;
+      }
+    </style>
+    <script src="lib/vue.js"></script>
+    <script src="lib/axios.min.js"></script>
+    <script src="lib/common.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <table>
+        <thead>
+          <tr>
+            <td>id</td>
+            <td>名称</td>
+            <td>price</td>
+            <td>status</td>
+            <td>qty</td>
+            <td>cid</td>
+            <td>日期</td>
+            <td>图片</td>
+            <td>操作</td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr :key="p.id" v-for="p in productList">
+            <td>{{p.id}}</td>
+            <td>{{p.pname}}</td>
+            <td>{{p.price}}</td>
+            <td>{{p.statusText}}</td>
+            <td>{{p.qty}}</td>
+            <td>{{p.cid}}</td>
+            <td>{{p.pubdate}}</td>
+            <td><img :src="getImageUrl(p.image)" /></td>
+            <td>
+              <a href="#" @click.prevent="edit(p)">编辑</a>
+              <a href="#" @click.prevent="deleteById(p.id)">删除</a>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div>
+        名字:<input type="text" name="pname" v-model="product.pname" /><br />
+        价格:<input type="text" name="price" v-model="product.price" /><br />
+        数量:<input type="number" name="qty" v-model="product.qty" /><br />
+        日期:<input
+          type="date"
+          name="pubdate"
+          v-model="product.pubdate"
+        /><br />
+        状态:
+        <input type="radio" id="up" value="true" v-model="product.status" />
+        <label for="up">上架</label>
+        <input type="radio" id="down" value="false" v-model="product.status" />
+        <label for="down">下架</label><br />
+
+        分类:
+        <select name="cid" v-model="product.cid">
+          <option>---选择---</option>
+          <option v-for="c in categoryList" :value="c.id">{{c.cname}}</option>
+        </select>
+        <br />
+        图片:<input type="file" name="pfile" id="pfile" ref="pfile" /><br />
+        <input
+          type="hidden"
+          name="image"
+          id="image"
+          v-model="product.image"
+        /><br />
+        <input type="button" value="保存" @click="save" />
+      </div>
+    </div>
+
+    <script>
+      let vm = new Vue({
+        el: '#app',
+        data: {
+          product: {
+            id: -1,
+            pname: '',
+            price: 0.0,
+            qty: 0,
+            pubdate: '',
+            status: true,
+            cid: 0,
+            image: '',
+          },
+          isInsert: true,
+          productList: [],
+          categoryList: [],
+        },
+        methods: {
+          getImageUrl: function (name) {
+            return axios.defaults.baseURL + '/file/download?filename=' + name
+          },
+          getProductList() {
+            axios.get('/product/list').then(function (result) {
+              vm.productList = result.data.data
+            })
+          },
+          getCategoryList() {
+            axios.get('/category/list').then(function (result) {
+              vm.categoryList = result.data.data
+            })
+          },
+          edit(p) {
+            //相当于克隆，避免表格中的数据与表单中的数据联动
+            vm.product = JSON.parse(JSON.stringify(p))
+            //不能像下面这样写
+            // vm.product = p
+
+            this.isInsert = false
+          },
+          deleteById(id) {
+            if (confirm('sure?')) {
+              axios.post('/product/delete?id=' + id).then(function (result) {
+                //在响应拦截器里做了
+                /*  if (result.data.code == 403) {
+                  location.href = 'login.html'
+                } */
+                if (result.data.code == 200) {
+                  location.reload()
+                }
+              })
+            }
+          },
+          modify(url) {
+            let fd = new FormData()
+            let file = vm.$refs.pfile.files[0]
+            if (file != undefined && file != null) {
+              fd.append('pfile', vm.$refs.pfile.files[0])
+            }
+
+            axios({
+              url: url,
+              method: 'POST',
+              headers: {
+                'Content-Type': 'multipart-formdata',
+              },
+              data: fd,
+              params: vm.product,
+            }).then(function (result) {
+              if (result.data.code == 200) {
+                location.reload()
+              }
+            })
+          },
+          save() {
+            if (this.isInsert) {
+              this.modify('/product/insert')
+            } else {
+              this.modify('/product/update')
+              this.isInsert = true
+            }
+          },
+        },
+        created: function () {
+          this.getProductList()
+          this.getCategoryList()
+        },
+      })
+    </script>
+  </body>
+</html>
